@@ -41,14 +41,14 @@ data_simulation = function(model,
   if(!is.null(method.wt)){
     W=model$W
     diag(W) = depletion.factor.wt
-    R0 = compute_states(W,
-                        rep(0,ncol(model$Q)),
-                        model$r0,
-                        times,
-                        method.wt,
-                        ts,
+    R0 = compute_states(W = W,
+                        q = rep(0,ncol(model$Q)),
+                        r0 = model$r0,
+                        times = times,
+                        method = method.wt,
+                        ts = ts,
                         flag =TRUE,
-                        stimulation.value.wt)
+                        stimulation.value = stimulation.value.wt)
 
   }else{
     R0=model$r0
@@ -67,6 +67,7 @@ data_simulation = function(model,
                        flag =TRUE,
                        stimulation.value)
        #Activety level of hidden node = gamma function = tanh|x(t)-x(WT)|
+
     gamma_val = gammas(R = R,
                        R_0 = R0,
                        flag = TRUE)

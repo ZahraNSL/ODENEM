@@ -47,7 +47,10 @@ gammas = function(R,
             legend.text = ggplot2::element_text(size = 6))+
       ggplot2::ggtitle(paste0("Experiment_",
               which(apply(R, 2, function(x) all(x==0)))))+
-      ggplot2::geom_jitter()
+      ggplot2::geom_jitter()+
+      ggplot2::scale_shape_manual(values = c(0,1,2,3,4,5,6,7,8,
+                                             9,10,11,12,13,14,15))
+
 
     print(p)
   }

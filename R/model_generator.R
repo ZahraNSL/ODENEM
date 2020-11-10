@@ -144,17 +144,14 @@ model_generator <- function(stype,
   }
 
   #ODE method SteadyState or TimeSeries?----------------------------------
-  if (ti_num == 1)
-  {
+  if (ti_num == 1){
     method = "steadyState"
-  } else
-  {
+  } else{
     method = "timeSeries"
   }
 
   #Log Fold changes parameters----------------------------------
-  if (is.null(data.para))
-  {
+  if (is.null(data.para)){
     model$data.para$trunc.mean<-0
     model$data.para$trunc.sd<- 0.15
     model$data.para$gumb.loc<-1.6
