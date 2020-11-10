@@ -32,7 +32,8 @@ model_generator <- function(stype,
                             stimulation.value.wt,
                             tstep) {
   load(paste0(stype, ".RData")) #load the true structure of the Motif
-  igraph::plot.igraph(g)#vertex.size=30
+  #igraph::plot.igraph(g)#vertex.size=30
+  print(igraph::edge(g))
 
   #make matrix from true network graph
   #g = igraph object of the Motif------------------------
