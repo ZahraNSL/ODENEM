@@ -83,6 +83,12 @@ compute_states = function(W,
         colnames(df_states) = c("Time","Hidden_node","State_Value")
         Hidden_nodes=as.factor(df_states$Hidden_node)
         Times=as.factor(df_states$Time)
+        qual_col_pals = RColorBrewer::brewer.pal.info[
+          RColorBrewer::brewer.pal.info$category == 'qual',]
+        col_vector = unlist(mapply(RColorBrewer::brewer.pal,
+                                   qual_col_pals$maxcolors,
+                                   rownames(qual_col_pals)))
+
 
          p=ggplot2::ggplot(df_states,
                           ggplot2::aes(x = Times,
@@ -105,7 +111,9 @@ compute_states = function(W,
                            no = "Wild Type States"))) +
            ggplot2::geom_jitter()+
            ggplot2::scale_shape_manual(values = c(0,1,2,3,4,5,6,7,8,
-                                                  9,10,11,12,13,14,15))
+                                                  9,10,11,12,13,14,15))+
+           ggplot2::scale_color_manual(values=col_vector)
+
 
         print(p)
 
