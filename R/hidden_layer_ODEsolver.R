@@ -39,6 +39,7 @@ hidden_layer_ODEsolver <- function(t,
     #in stimulation
     if(any(r!=0) && any(Q>=0)){
       Q[r!=0]=0#rep(0,ncol(W))
+      x[r != 0] <- 0 #stable state for inhibited targets
       dx = phi(t(W) %*% x + Q) - (x * diag(W)) #propagation
       dx[r != 0] <- 0 #stable state for inhibited targets
 
