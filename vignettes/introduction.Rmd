@@ -1,6 +1,6 @@
 ---
 title: "introduction"
-output: rmarkdown::html_vignette
+output: html_document #rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{introduction}
   %\VignetteEngine{knitr::rmarkdown}
@@ -122,195 +122,223 @@ PR_curve<- function(res_mat ,model){
 ```
 
 
-```{r mcmc, echo=FALSE, message=FALSE}
 
-stype="St_5_1"
+```{r test, fig.show="hold", fig.width=5, fig.height=3,dpi=300,, echo=FALSE, message=FALSE}
 
-for(sim in 1:5){
 
- model=model_generator(stype = stype,
-                      ti_num =20,
+ model=model_generator(stype = "PC",
+                      ti_num =2000,
                       prior.theta = NULL,
                       prior.W = NULL,
                       data.para = NULL,
                       W.factor = 1,
+                        # matrix(runif(100,0,1),
+                        #                 nrow = 10,ncol = 10),
                       depletion.factor =0.1,
                       depletion.factor.wt = 0.1,
-                      init.ODE = 1,
+                      init.ODE =  0.5 ,
                       E_num = 40,
-                      method.wt = "timeSeries" ,
+                      method.wt = "steadyState" ,
                       stimulation.value = 0,
                       stimulation.value.wt = 0,
-                      tstep = 1)
+                      tstep = 100)
  model$W
-print(rcppLikelihood(model,
-               compute_states ,
-               gammas,
-               density_effect,
-               density_no_effect,
-               wildtype_states,
-               stimulation,
-               "timeSeries" ,
-               1))#likelihood(new_model,method,ts)
-
- res_mcmc=MCMC_sampling(dat = model$orig.dat,
-                        Q = model$Q,
-                        r_0 = model$r0,
-                        rho = model$rho,
-                        hyper.W = model$prior.W,
-                        prior.theta = model$prior.theta,
-                        data.para = model$data.para,
-                        depletion.factor =diag(model$W)[1],
-                        depletion.factor.wt = model$depletion.factor.wt,
-                        method.wt = model$method.wt,
-                        stimulation.value = model$stimulation.value,
-                        stimulation.value.wt = model$stimulation.value.wt,
-                        seed = 1,
-                        ts = 1,
-                        itr = 40000)
-
-
-save(model,file = paste0(stype,"_",sim,"_model.RData"))
-save(res_mcmc,file = paste0(stype,"_",sim,"_res.RData"))
-
-
-
-
-results=data.frame(row.names = c("auc","auprc"))
-par(ask=FALSE)
-
-
-  S_num = nrow(model$W)
-  S_names= paste0("S_",1:S_num)
-
-  plot(mcmc(sapply(1:length(res_mcmc$all_ll),
-                   function(x) unlist((res_mcmc$all_ll[[x]])))),
-        main = paste0("LogLikelihood"))
-  
-
-  
-  #window size for i.d.d samples
-  thn=100
-  ###########################################################
-  #autocorrelations
-  #summary
-  #acceptance rate
-  #effective size
-  #trace plots
-  #HPD plot
-  
-  # all after burn in (exept Summary,acc_rate,eff_size for whole chain)
-  #thn can be changed in case autocorr needs bigger size window
-  ###############################################################
-   for(from in 1:S_num)
-     {for(to in 1:S_num){
-
-       name <- paste0(from,"---->",to)
-       W_list <- sapply(1:length(res_mcmc$all_W),function(x)
-        unlist(res_mcmc$all_W[[x]][from,to]))
-       
-       
-      if(from!=to
-           &&sum(as.logical(W_list))
-           &&(!is.constant(W_list))
-         ){
-
-
-           autocorr.plot(as.mcmc(sapply(
-             (length(res_mcmc$all_W)/2):length(res_mcmc$all_W),function(x)
-               unlist(res_mcmc$all_W[[x]][from,to]))),
-             main=paste0(S_names[from],"---->",S_names[to]),
-             lag=thn)
-
-
-           print("Summary")
-           print(summary(mcmc(sapply(1:length(res_mcmc$all_W),function(x)
-             unlist(res_mcmc$all_W[[x]][from,to])))))
-
-           print("Acceptance rate")
-           print(1-rejectionRate(as.mcmc(
-             sapply(1:length(res_mcmc$all_W),function(x)
-               unlist(res_mcmc$all_W[[x]][from,to])))))
-
-          print("Effective Size")
-          print(effectiveSize(as.mcmc(
-            sapply(1:length(res_mcmc$all_W),function(x)
-              unlist(res_mcmc$all_W[[x]][from,to])))))
-          
-          
-          mcmc.trace.burned <- burnAndThin(
-            as.mcmc(sapply((length(res_mcmc$all_W)/2):length(res_mcmc$all_W),
-                           function(x) unlist(res_mcmc$all_W[[x]][from,to]))))
-          
-          plot(mcmc.trace.burned,ask = FALSE,
-               main = paste0(S_names[from],"_",S_names[to]))
-
-          if(sum(mcmc.trace.burned)){
-            print(p.interval(mcmc.trace.burned, 
-                             HPD=TRUE, 
-                             MM=FALSE, 
-                             plot=TRUE,
-                             main = paste0(S_names[from],"---->",S_names[to])))
-
-
-          }
-      }
-     }
-     }
-
-  
-##################calculate Posteroir Probability and AUC ROC,PR  
-  
-  res<-Thin(lapply((length(res_mcmc$all_W)/2):length(res_mcmc$all_W),
-                   function(i) unlist(res_mcmc$all_W[[i]])),By = thn)
-
-   print(length(res))
-   
-    postProb <-postProcess(results = res,
-                           Snames = S_names)
-    pander::pandoc.header("Posterior Probability and Evaluations")
-   print(postProb[[1]])
-    pander::pandoc.header("True_W")
-   print(model$W)
- 
-##################
-pander::pandoc.header("Evaluations_postProb")   
-p_mat=postProb[[1]]
-
-
-print("auc")
-
-auc=auc(roc(
-response  =as.vector(c(as.numeric(model$W[lower.tri(model$W)]!= 0),
-                       as.numeric(model$W[upper.tri(model$W)]!= 0))),
-predictor=as.vector(c(p_mat[lower.tri(p_mat)],
-                      p_mat[upper.tri(p_mat)])),auc = TRUE,plot = TRUE))
-
-print(auc)
-
-print("auprc")
-auprc=AUPRC(list(precision.at.all.recall.levels(
-labels = as.vector(c(as.numeric(model$W[lower.tri(model$W)]!= 0),
-                       as.numeric(model$W[upper.tri(model$W)]!= 0))),scores =
-  as.vector(c(p_mat[lower.tri(p_mat)],p_mat[upper.tri(p_mat)])))))
-
-print(auprc)
-
-results[,paste0("ode",stype)] =c(auc,auprc)
-
-#########################
-
-
-    write.csv(results,  file=paste0(stype,"_",sim,"_results_.csv"))
-
-
-
-}
 
 ```
 
 
-#**summary of mcmc results and autocorrelation**
+
+```{r mcmc, echo=FALSE, message=FALSE}
+# for(m in 2:9){
+# 
+# 
+# stype=paste0("St_10_",m)
+# 
+# for(sim in 1:1){
+#  model=model_generator(stype = stype,
+#                       ti_num =20,
+#                       prior.theta = NULL,
+#                       prior.W = NULL,
+#                       data.para = NULL,
+#                       W.factor = 1,
+#                         # matrix(runif(100,0,1),
+#                         #                 nrow = 10,ncol = 10),
+#                       depletion.factor =0.1,
+#                       depletion.factor.wt = 0.1,
+#                       init.ODE = 0.5,
+#                       E_num = 100,
+#                       method.wt = "timeSeries" ,
+#                       stimulation.value = 0,
+#                       stimulation.value.wt = 0,
+#                       tstep = 1)
+#  model$W
+# print(rcppLikelihood(model,
+#                compute_states ,
+#                gammas,
+#                density_effect,
+#                density_no_effect,
+#                wildtype_states,
+#                stimulation,
+#                "timeSeries" ,
+#                1))#likelihood(new_model,method,ts)
+# 
+#  res_mcmc=MCMC_sampling(dat = model$orig.dat,
+#                         Q = model$Q,
+#                         r_0 = model$r0,
+#                         rho = model$rho,
+#                         hyper.W = model$prior.W,
+#                         prior.theta = model$prior.theta,
+#                         data.para = model$data.para,
+#                         depletion.factor =diag(model$W)[1],
+#                         depletion.factor.wt = model$depletion.factor.wt,
+#                         method.wt = model$method.wt,
+#                         stimulation.value = model$stimulation.value,
+#                         stimulation.value.wt = model$stimulation.value.wt,
+#                         seed = 1,
+#                         ts = 1,
+#                         itr = 80000)
+# 
+# 
+# save(model,file = paste0(stype,"_",sim,"_model.RData"))
+# save(res_mcmc,file = paste0(stype,"_",sim,"_res.RData"))
+# 
+# 
+# 
+#  results=data.frame(row.names = c("auc","auprc"))
+# # par(ask=FALSE)
+# #
+# #
+#   S_num = nrow(model$W)
+#   S_names= paste0("S_",1:S_num)
+# #
+# #   plot(mcmc(sapply(1:length(res_mcmc$all_ll),
+# #                    function(x) unlist((res_mcmc$all_ll[[x]])))),
+# #         main = paste0("LogLikelihood"))
+# #
+# #
+# #
+# #   #window size for i.d.d samples
+# #   thn=100
+# #   ###########################################################
+# #   #autocorrelations
+# #   #summary
+# #   #acceptance rate
+# #   #effective size
+# #   #trace plots
+# #   #HPD plot
+# #
+# #   # all after burn in (exept Summary,acc_rate,eff_size for whole chain)
+# #   #thn can be changed in case autocorr needs bigger size window
+# #   ###############################################################
+# #    for(from in 1:S_num)
+# #      {for(to in 1:S_num){
+# #
+# #        name <- paste0(from,"---->",to)
+# #        W_list <- sapply(1:length(res_mcmc$all_W),function(x)
+# #         unlist(res_mcmc$all_W[[x]][from,to]))
+# #
+# #
+# #       if(from!=to
+# #            &&sum(as.logical(W_list))
+# #            &&(!is.constant(W_list))
+# #          ){
+# #
+# #
+# #            autocorr.plot(as.mcmc(sapply(
+# #              (length(res_mcmc$all_W)/2):length(res_mcmc$all_W),function(x)
+# #                unlist(res_mcmc$all_W[[x]][from,to]))),
+# #              main=paste0(S_names[from],"---->",S_names[to]),
+# #              lag=thn)
+# #
+# #
+# #            print("Summary")
+# #            print(summary(mcmc(sapply(1:length(res_mcmc$all_W),function(x)
+# #              unlist(res_mcmc$all_W[[x]][from,to])))))
+# #
+# #            print("Acceptance rate")
+# #            print(1-rejectionRate(as.mcmc(
+# #              sapply(1:length(res_mcmc$all_W),function(x)
+# #                unlist(res_mcmc$all_W[[x]][from,to])))))
+# #
+# #           print("Effective Size")
+# #           print(effectiveSize(as.mcmc(
+# #             sapply(1:length(res_mcmc$all_W),function(x)
+# #               unlist(res_mcmc$all_W[[x]][from,to])))))
+# #
+# #
+# #           mcmc.trace.burned <- burnAndThin(
+# #             as.mcmc(sapply((length(res_mcmc$all_W)/2):length(res_mcmc$all_W),
+# #                            function(x) unlist(res_mcmc$all_W[[x]][from,to]))))
+# #
+# #           plot(mcmc.trace.burned,ask = FALSE,
+# #                main = paste0(S_names[from],"_",S_names[to]))
+# #
+# #           if(sum(mcmc.trace.burned)){
+# #             print(p.interval(mcmc.trace.burned,
+# #                              HPD=TRUE,
+# #                              MM=FALSE,
+# #                              plot=TRUE,
+# #                              main = paste0(S_names[from],"---->",S_names[to])))
+# #
+# #
+# #           }
+# #       }
+# #      }
+# #      }
+# #
+# #
+# # ##################calculate Posteroir Probability and AUC ROC,PR
+# #
+#   res<-Thin(lapply((length(res_mcmc$all_W)/2):length(res_mcmc$all_W),
+#                    function(i) unlist(res_mcmc$all_W[[i]])),By = thn)
+# 
+#    print(length(res))
+# 
+#     postProb <-postProcess(results = res,
+#                            Snames = S_names)
+#     pander::pandoc.header("Posterior Probability and Evaluations")
+#    print(postProb[[1]])
+#     pander::pandoc.header("True_W")
+#    print(model$W)
+# 
+# ##################
+# pander::pandoc.header("Evaluations_postProb")
+# p_mat=postProb[[1]]
+# 
+# 
+# print("auc")
+# 
+# auc=auc(roc(
+# response  =as.vector(c(as.numeric(model$W[lower.tri(model$W)]!= 0),
+#                        as.numeric(model$W[upper.tri(model$W)]!= 0))),
+# predictor=as.vector(c(p_mat[lower.tri(p_mat)],
+#                       p_mat[upper.tri(p_mat)])),auc = TRUE,plot = TRUE))
+# 
+# print(auc)
+# 
+# print("auprc")
+# auprc=AUPRC(list(precision.at.all.recall.levels(
+# labels = as.vector(c(as.numeric(model$W[lower.tri(model$W)]!= 0),
+#                        as.numeric(model$W[upper.tri(model$W)]!= 0))),scores =
+#   as.vector(c(p_mat[lower.tri(p_mat)],p_mat[upper.tri(p_mat)])))))
+# 
+# print(auprc)
+# 
+#  results[,paste0("ode",stype)] =c(auc,auprc)}}
+# #
+# # #########################
+# #
+# #
+# #     write.csv(results,  file=paste0(stype,"_",sim,"_results_.csv"))
+# 
+# 
+# 
+# # }
+
+```
+
+
+<!-- **summary of mcmc results and autocorrelation** -->
 ```{r MCMC_results,echo=FALSE,message=FALSE,warning=FALSE}
 ```
 
