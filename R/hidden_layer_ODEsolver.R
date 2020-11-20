@@ -23,32 +23,35 @@ hidden_layer_ODEsolver <- function(t,
 
     r <-as.integer(parms[[1]] != 0) # direct target of experiment
     W[, r != 0] <- 0 #zero indegree for inhibition receptors
-    #diag(W)= S_val # set back diag with alpha value
+    indegree_zero <- apply(W,2,function(x) (sum(x)==S_val)) #nodes with no incoming edge(for setting Q)
+    diag(W)= S_val # set back diag with alpha value otw diag of inhibited node is zero
 
     Q = stimulation( parms[[3]],
                      t,
                      length(parms[[1]]))
 
-    #ndown with Q(t)
+    #dx/dt of nockdown with big negative Q(t)
     if(any(r!=0) && any(Q<0)){
-       Q[r==0]=0#rep(0,ncol(W))
-       dx = phi(t(W) %*% x + Q) - (x * diag(W)) #propagation
+
+       Q[r==0]=0#just stimulation of direct target is non-zero
+       dx = phi(t(W) %*% x ) + Q - (x * diag(W)) #propagation
        list(dx)
 
     }
-    #in stimulation
+    #dx/dt of experiment of ideal inhibition, stimulation function can e added to system
     if(any(r!=0) && any(Q>=0)){
-      Q[r!=0]=0#rep(0,ncol(W))
-      x[r != 0] <- 0 #stable state for inhibited targets
-      dx = phi(t(W) %*% x + Q) - (x * diag(W)) #propagation
-      dx[r != 0] <- 0 #stable state for inhibited targets
+
+      Q[!indegree_zero]=0#just stimulation of source node is nonzero
+      Q[r!=0]=0 #if a node is inhibited, stimulation of that is zero
+      dx =  phi(t(W) %*%   x ) +Q- (x * diag(W)) #propagation #Q and W inside or outside?
 
     }
+    #dx/dt of wild type
     if(all(r==0)){
 
-      dx = phi(t(W) %*% x + Q) - (x * diag(W)) #propagation
+      Q[!indegree_zero]=0 #just stimulation of source node is nonzero
+      dx =   phi( t(W) %*%  x ) +Q- (x * diag(W)) #propagation
     }
-
 
     list(dx)
 
