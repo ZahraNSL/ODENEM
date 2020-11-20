@@ -50,10 +50,16 @@ data_simulation = function(model,
                         flag =TRUE,
                         stimulation.value = stimulation.value.wt)
 
+
+    #in wild type after t times running states are converged to minima
+    #this will be the starting point for experiment
+    if(method.wt=="timeSeries"){
+      R0=R0[nrow(R0),]
+    }
+
   }else{
     R0=model$r0
   }
-
   # draw O[i,q,t] from mixture distribution
   for (q in 1:npert) {
     # for a given true model(with W, starting points,...), using corresponding ODE function to solve ODE
